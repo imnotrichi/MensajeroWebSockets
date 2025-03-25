@@ -1,0 +1,3 @@
+org\itson\servidorwebsockets\socket\WSocket.class
+org\itson\servidorwebsockets\JakartaRestConfiguration.class
+org\itson\servidorwebsockets\resources\JakartaEE91Resource.class
