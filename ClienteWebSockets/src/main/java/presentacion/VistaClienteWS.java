@@ -25,6 +25,7 @@ public class VistaClienteWS extends javax.swing.JFrame implements Runnable {
         
         serverURI = URI.create("ws://localhost:8080/ServidorWebSockets/echo");
         executorService.agregarCliente(this);
+        mensajeEnviado = false;
 
         try {
             WebSocketContainer container = ContainerProvider.getWebSocketContainer();
@@ -59,7 +60,12 @@ public class VistaClienteWS extends javax.swing.JFrame implements Runnable {
     
     @Override
     public void run() {
-        enviarMensaje(mensaje);
+        while (true) {
+            if (mensajeEnviado) {
+                enviarMensaje(campoTextoMensaje.getText());
+                mensajeEnviado = false;
+            }
+        }
     }
     
     /**
@@ -126,7 +132,7 @@ public class VistaClienteWS extends javax.swing.JFrame implements Runnable {
     }// </editor-fold>//GEN-END:initComponents
 
     private void botonEnviarMensajeActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_botonEnviarMensajeActionPerformed
-        mensaje = campoTextoMensaje.getText();
+        mensajeEnviado = true;
     }//GEN-LAST:event_botonEnviarMensajeActionPerformed
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
@@ -138,6 +144,6 @@ public class VistaClienteWS extends javax.swing.JFrame implements Runnable {
     // End of variables declaration//GEN-END:variables
     private URI serverURI;
     private Session session;
-    private String mensaje;
+    private Boolean mensajeEnviado;
     private Clientes executorService = Clientes.getInstance();
 }
