@@ -6,7 +6,6 @@ package org.itson.clientewebsockets;
 
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import presentacion.VistaClienteWS;
 
 /**
  *
@@ -20,7 +19,7 @@ public class Clientes {
     private Clientes() {
     }
     
-    public void agregarCliente(VistaClienteWS cliente) {
+    public void agregarCliente(Runnable cliente) {
         clientes.execute(cliente);
     }
     

@@ -23,7 +23,12 @@ public class WSocket {
 
     @OnClose
     public void close(Session session) {
-        
+        try {
+            sessions.get(sessions.indexOf(session)).close();
+            sessions.remove(sessions.indexOf(session));
+        } catch (IOException ex) {
+            Logger.getLogger(WSocket.class.getName()).log(Level.SEVERE, null, ex);
+        }
     }
 
     @OnMessage

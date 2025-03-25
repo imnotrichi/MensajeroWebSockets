@@ -6,6 +6,7 @@ package org.itson.clientewebsockets;
 
 import presentacion.VistaClienteWS;
 
+
 /**
  *
  * @author ricar
@@ -16,8 +17,11 @@ public class MainPrincipal {
      * @param args the command line arguments
      */
     public static void main(String[] args) {
-        VistaClienteWS vista = new VistaClienteWS();
-        vista.setVisible(true);
+        
+        Clientes executorService = Clientes.getInstance();
+        
+        executorService.agregarCliente(new VistaClienteWS());
+        
     }
 
 }

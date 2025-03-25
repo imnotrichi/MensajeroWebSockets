@@ -3,6 +3,7 @@ package presentacion;
 import jakarta.websocket.ClientEndpoint;
 import jakarta.websocket.ContainerProvider;
 import jakarta.websocket.DeploymentException;
+import jakarta.websocket.OnClose;
 import jakarta.websocket.OnMessage;
 import jakarta.websocket.OnOpen;
 import jakarta.websocket.Session;
@@ -11,7 +12,6 @@ import java.io.IOException;
 import java.net.URI;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import org.itson.clientewebsockets.Clientes;
 import org.itson.clientewebsockets.WSEndpoint;
 
 @ClientEndpoint
@@ -22,10 +22,10 @@ public class VistaClienteWS extends javax.swing.JFrame implements Runnable {
      */
     public VistaClienteWS() {
         initComponents();
+        setTitle("Mensajeador");
+        setVisible(true);
         
         serverURI = URI.create("ws://localhost:8080/ServidorWebSockets/echo");
-        executorService.agregarCliente(this);
-        mensajeEnviado = false;
 
         try {
             WebSocketContainer container = ContainerProvider.getWebSocketContainer();
@@ -33,6 +33,8 @@ public class VistaClienteWS extends javax.swing.JFrame implements Runnable {
         } catch (DeploymentException | IOException ex) {
             Logger.getLogger(WSEndpoint.class.getName()).log(Level.SEVERE, null, ex);
         }
+        
+        mensajeEnviado = false;
     }
     
     @OnOpen
@@ -42,6 +44,16 @@ public class VistaClienteWS extends javax.swing.JFrame implements Runnable {
             session.getBasicRemote().sendText(session.getId() + ": Ya me conecté");
         } catch (IOException ex) {
             Logger.getLogger(WSEndpoint.class.getName()).log(Level.SEVERE, null, ex);
+        }
+    }
+    
+    @OnClose
+    public void onClose(Session session) {
+        try {
+            session.getBasicRemote().sendText(session.getId() + ": Bye!");
+            session.close();
+        } catch (IOException ex) {
+            Logger.getLogger(VistaClienteWS.class.getName()).log(Level.SEVERE, null, ex);
         }
     }
     
@@ -145,5 +157,4 @@ public class VistaClienteWS extends javax.swing.JFrame implements Runnable {
     private URI serverURI;
     private Session session;
     private Boolean mensajeEnviado;
-    private Clientes executorService = Clientes.getInstance();
 }
