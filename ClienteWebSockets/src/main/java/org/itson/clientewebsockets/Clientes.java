@@ -14,7 +14,7 @@ import java.util.concurrent.Executors;
 public class Clientes {
     
     private static ExecutorService clientes = Executors.newCachedThreadPool();
-    private static Clientes instance;
+    private static Clientes instance = new Clientes();
 
     private Clientes() {
     }
@@ -24,9 +24,6 @@ public class Clientes {
     }
     
     public static Clientes getInstance() {
-        if (instance == null) {
-            instance = new Clientes();
-        }
         return instance;
     }
 }

@@ -19,7 +19,7 @@ public class WSEndpoint {
     private Session session;
 
     public WSEndpoint() {
-        serverURI = URI.create("ws://localhost:8080/ServidorWebSockets/echo");
+        serverURI = URI.create("ws://localhost:8080/S   ervidorWebSockets/echo");
 
         try {
             WebSocketContainer container = ContainerProvider.getWebSocketContainer();
@@ -38,17 +38,21 @@ public class WSEndpoint {
             Logger.getLogger(WSEndpoint.class.getName()).log(Level.SEVERE, null, ex);
         }
     }
-    
+
     @OnMessage
     public void onMessage(String mensaje, Session session) {
         System.out.println("El servidor dice: " + mensaje);
     }
 
     public void enviarMensaje(String mensaje) {
-        try {
-            session.getBasicRemote().sendText(session.getId() + ": " + mensaje);
-        } catch (IOException e) {
-            Logger.getLogger(WSEndpoint.class.getName()).log(Level.SEVERE, null, e);
+        if (session != null && session.isOpen()) {
+            try {
+                session.getBasicRemote().sendText(session.getId() + ": " + mensaje);
+            } catch (IOException e) {
+                Logger.getLogger(WSEndpoint.class.getName()).log(Level.SEVERE, null, e);
+            }
+        } else {
+            System.out.println("No hay conexión activa con el servidor.");
         }
     }
 

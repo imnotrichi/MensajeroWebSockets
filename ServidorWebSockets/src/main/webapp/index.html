@@ -5,66 +5,88 @@
         <title>WebSocket Test</title>
         <script language="javascript" type="text/javascript">
             var wsUri = "ws://localhost:8080/ServidorWebSockets/echo";
-            var output;
+            var output, websocket, alias, userList, connectedUsers = new Set();
 
-            function enviar() {
-                var txt = document.getElementById("txtMsj");
-                doSend(txt.value);
-            }
-
-            function init()
-            {
+            function init() {
+                alias = prompt("Ingresa tu alias:", "Usuario" + Math.floor(Math.random() * 1000));
+                if (!alias)
+                    alias = "Usuario" + Math.floor(Math.random() * 1000);
+                document.title = "Mensajeador - " + alias;
                 output = document.getElementById("output");
+                userList = document.getElementById("userList");
+                connectedUsers.add(alias);
                 testWebSocket();
             }
 
-            function testWebSocket()
-            {
+            function testWebSocket() {
                 websocket = new WebSocket(wsUri);
                 websocket.onopen = function (evt) {
-                    onOpen(evt)
+                    onOpen(evt);
                 };
                 websocket.onclose = function (evt) {
-                    onClose(evt)
+                    onClose(evt);
                 };
                 websocket.onmessage = function (evt) {
-                    onMessage(evt)
+                    onMessage(evt);
                 };
                 websocket.onerror = function (evt) {
-                    onError(evt)
+                    onError(evt);
                 };
             }
 
-            function onOpen(evt)
-            {
+            function onOpen(evt) {
                 writeToScreen("CONNECTED");
-                doSend("WebSocket rocks");
+                websocket.send("REGISTER:" + alias);
             }
 
-            function onClose(evt)
-            {
+            function onClose(evt) {
                 writeToScreen("DISCONNECTED");
             }
 
-            function onMessage(evt)
-            {
-                writeToScreen('<span style="color: blue;">RESPONSE: ' + evt.data + '</span>');
-                //websocket.close();
+            function onMessage(evt) {
+                var msg = evt.data;
+                if (msg.startsWith("CONNECT:")) {
+                    connectedUsers.add(msg.substring(8));
+                    updateUserList();
+                } else if (msg.startsWith("DISCONNECT:")) {
+                    connectedUsers.delete(msg.substring(11));
+                    updateUserList();
+                } else if (msg.startsWith("USERS:")) {
+                    var users = msg.substring(6).split(",");
+                    users.forEach(user => {
+                        if (user)
+                            connectedUsers.add(user);
+                    });
+                    updateUserList();
+                } else {
+                    writeToScreen('<span style="color: blue;">' + msg + '</span>');
+                }
             }
 
-            function onError(evt)
-            {
+            function onError(evt) {
                 writeToScreen('<span style="color: red;">ERROR:</span> ' + evt.data);
             }
 
-            function doSend(message)
-            {
-                writeToScreen("SENT: " + message);
-                websocket.send(message);
+            function updateUserList() {
+                userList.innerHTML = "Usuarios conectados:<br>" + Array.from(connectedUsers).join("<br>");
             }
 
-            function writeToScreen(message)
-            {
+            function enviar() {
+                var txt = document.getElementById("txtMsj").value;
+                var destinatario = document.getElementById("txtDestinatario").value;
+                if (txt) {
+                    if (destinatario) {
+                        websocket.send("TO:" + destinatario + ":" + txt);
+                        writeToScreen("SENT TO " + destinatario + ": " + txt);
+                    } else {
+                        websocket.send(txt);
+                        writeToScreen("SENT (BROADCAST): " + txt);
+                    }
+                    document.getElementById("txtMsj").value = "";
+                }
+            }
+
+            function writeToScreen(message) {
                 var pre = document.createElement("p");
                 pre.style.wordWrap = "break-word";
                 pre.innerHTML = message;
@@ -72,14 +94,21 @@
             }
 
             window.addEventListener("load", init, false);
-
         </script>
+        <style>
+            #userList, #output {
+                display: inline-block;
+                vertical-align: top;
+                width: 45%;
+            }
+        </style>
     </head>
     <body>
         <h2>WebSocket Test</h2>
-        Escribe un mensaje: 
-        <input type="text" id="txtMsj" />
+        A (vacío = todos): <input type="text" id="txtDestinatario" /><br/>
+        Mensaje: <input type="text" id="txtMsj" />
         <button id="btn" onclick="enviar()">Enviar</button>
+        <div id="userList"></div>
         <div id="output"></div>
     </body>
-</html> 
+</html>

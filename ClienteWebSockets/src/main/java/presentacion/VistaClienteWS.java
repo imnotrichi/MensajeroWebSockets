@@ -10,76 +10,110 @@ import jakarta.websocket.Session;
 import jakarta.websocket.WebSocketContainer;
 import java.io.IOException;
 import java.net.URI;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import javax.swing.JOptionPane;
 import org.itson.clientewebsockets.WSEndpoint;
 
 @ClientEndpoint
 public class VistaClienteWS extends javax.swing.JFrame implements Runnable {
 
+    private String alias;
+    private Set<String> connectedUsers = new HashSet<>();
     /**
      * Creates new form VistaClienteWS
      */
     public VistaClienteWS() {
         initComponents();
-        setTitle("Mensajeador");
         setVisible(true);
         
-        serverURI = URI.create("ws://localhost:8080/ServidorWebSockets/echo");
+        // Solicitar alias al usuario
+        alias = JOptionPane.showInputDialog(this, "Ingresa tu alias:", "Registro", JOptionPane.PLAIN_MESSAGE);
+        if (alias == null || alias.trim().isEmpty()) {
+            alias = "Usuario" + (int)(Math.random() * 1000); // Alias por defecto
+        }
 
+        setTitle("Mensajeador - " + alias);
+        connectedUsers.add(alias);
+        
+        serverURI = URI.create("ws://localhost:8080/ServidorWebSockets/echo");
         try {
             WebSocketContainer container = ContainerProvider.getWebSocketContainer();
             session = container.connectToServer(this, serverURI);
         } catch (DeploymentException | IOException ex) {
-            Logger.getLogger(WSEndpoint.class.getName()).log(Level.SEVERE, null, ex);
+            Logger.getLogger(VistaClienteWS.class.getName()).log(Level.SEVERE, null, ex);
         }
-        
-        mensajeEnviado = false;
     }
-    
+
     @OnOpen
     public void onOpen(Session session) {
-        System.out.println("Ya me conecté");
         try {
-            session.getBasicRemote().sendText(session.getId() + ": Ya me conecté");
-        } catch (IOException ex) {
-            Logger.getLogger(WSEndpoint.class.getName()).log(Level.SEVERE, null, ex);
-        }
-    }
-    
-    @OnClose
-    public void onClose(Session session) {
-        try {
-            session.getBasicRemote().sendText(session.getId() + ": Bye!");
-            session.close();
+            session.getBasicRemote().sendText("REGISTER:" + alias);
         } catch (IOException ex) {
             Logger.getLogger(VistaClienteWS.class.getName()).log(Level.SEVERE, null, ex);
         }
     }
-    
-    @OnMessage
-    public void onMessage(String mensaje, Session session) {
-        areaTextoMensajes.append("\nEl servidor dice: " + mensaje);
+
+    @OnClose
+    public void onClose(Session session) {
+        try {
+            if (session.isOpen()) {
+                session.close();
+            }
+        } catch (IOException ex) {
+            Logger.getLogger(VistaClienteWS.class.getName()).log(Level.SEVERE, null, ex);
+        }
     }
 
-    public void enviarMensaje(String mensaje) {
-        try {
-            session.getBasicRemote().sendText(session.getId() + ": " + mensaje);
-        } catch (IOException e) {
-            Logger.getLogger(WSEndpoint.class.getName()).log(Level.SEVERE, null, e);
+    @OnMessage
+    public void onMessage(String mensaje, Session session) {
+        if (mensaje.startsWith("CONNECT:")) {
+            String newUser = mensaje.substring(8);
+            connectedUsers.add(newUser);
+            updateUserList();
+        } else if (mensaje.startsWith("DISCONNECT:")) {
+            String user = mensaje.substring(11);
+            connectedUsers.remove(user);
+            updateUserList();
+        } else if (mensaje.startsWith("USERS:")) {
+            String[] users = mensaje.substring(6).split(",");
+            for (String user : users) {
+                if (!user.isEmpty()) {
+                    connectedUsers.add(user);
+                }
+            }
+            updateUserList();
+        } else {
+            areaTextoMensajes.append("\n" + mensaje);
         }
     }
     
+    private void updateUserList() {
+        StringBuilder userList = new StringBuilder();
+        for (String user : connectedUsers) {
+            userList.append(user).append("\n");
+        }
+            areaUsuariosConectados.setText(userList.toString());
+    }
+
+    public void enviarMensaje(String mensaje, String destinatario) {
+        try {
+            if (destinatario == null || destinatario.trim().isEmpty()) {
+                session.getBasicRemote().sendText(mensaje);
+            } else {
+                session.getBasicRemote().sendText("TO:" + destinatario + ":" + mensaje);
+            }
+        } catch (IOException e) {
+            Logger.getLogger(VistaClienteWS.class.getName()).log(Level.SEVERE, null, e);
+        }
+    }
+
     @Override
     public void run() {
-        while (true) {
-            if (mensajeEnviado) {
-                enviarMensaje(campoTextoMensaje.getText());
-                mensajeEnviado = false;
-            }
-        }
     }
-    
+
     /**
      * This method is called from within the constructor to initialize the form.
      * WARNING: Do NOT modify this code. The content of this method is always
@@ -94,6 +128,11 @@ public class VistaClienteWS extends javax.swing.JFrame implements Runnable {
         botonEnviarMensaje = new javax.swing.JButton();
         jScrollPane1 = new javax.swing.JScrollPane();
         areaTextoMensajes = new javax.swing.JTextArea();
+        jLabel2 = new javax.swing.JLabel();
+        campoTextoDstn = new javax.swing.JTextField();
+        jScrollPane2 = new javax.swing.JScrollPane();
+        areaUsuariosConectados = new javax.swing.JTextArea();
+        jLabel3 = new javax.swing.JLabel();
 
         setDefaultCloseOperation(javax.swing.WindowConstants.EXIT_ON_CLOSE);
 
@@ -110,6 +149,14 @@ public class VistaClienteWS extends javax.swing.JFrame implements Runnable {
         areaTextoMensajes.setRows(5);
         jScrollPane1.setViewportView(areaTextoMensajes);
 
+        jLabel2.setText("Destinatario:");
+
+        areaUsuariosConectados.setColumns(20);
+        areaUsuariosConectados.setRows(5);
+        jScrollPane2.setViewportView(areaUsuariosConectados);
+
+        jLabel3.setText("Usuarios conectados");
+
         javax.swing.GroupLayout layout = new javax.swing.GroupLayout(getContentPane());
         getContentPane().setLayout(layout);
         layout.setHorizontalGroup(
@@ -122,8 +169,18 @@ public class VistaClienteWS extends javax.swing.JFrame implements Runnable {
                         .addComponent(jLabel1, javax.swing.GroupLayout.PREFERRED_SIZE, 106, javax.swing.GroupLayout.PREFERRED_SIZE)
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                         .addComponent(campoTextoMensaje))
-                    .addComponent(jScrollPane1, javax.swing.GroupLayout.DEFAULT_SIZE, 388, Short.MAX_VALUE))
+                    .addGroup(layout.createSequentialGroup()
+                        .addComponent(jLabel2, javax.swing.GroupLayout.PREFERRED_SIZE, 106, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                        .addComponent(campoTextoDstn))
+                    .addComponent(jScrollPane1, javax.swing.GroupLayout.Alignment.TRAILING))
                 .addContainerGap())
+            .addGroup(layout.createSequentialGroup()
+                .addGap(15, 15, 15)
+                .addComponent(jLabel3)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
+                .addComponent(jScrollPane2, javax.swing.GroupLayout.PREFERRED_SIZE, 230, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addContainerGap(104, Short.MAX_VALUE))
         );
         layout.setVerticalGroup(
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
@@ -132,10 +189,22 @@ public class VistaClienteWS extends javax.swing.JFrame implements Runnable {
                 .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
                     .addComponent(jLabel1)
                     .addComponent(campoTextoMensaje, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addGap(18, 18, 18)
+                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                    .addComponent(jLabel2)
+                    .addComponent(campoTextoDstn, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
+                .addGap(18, 18, 18)
                 .addComponent(botonEnviarMensaje)
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
-                .addComponent(jScrollPane1, javax.swing.GroupLayout.DEFAULT_SIZE, 219, Short.MAX_VALUE)
+                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                    .addGroup(layout.createSequentialGroup()
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                        .addComponent(jLabel3)
+                        .addGap(66, 66, 66))
+                    .addGroup(layout.createSequentialGroup()
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                        .addComponent(jScrollPane2, javax.swing.GroupLayout.DEFAULT_SIZE, 138, Short.MAX_VALUE)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)))
+                .addComponent(jScrollPane1, javax.swing.GroupLayout.PREFERRED_SIZE, 189, javax.swing.GroupLayout.PREFERRED_SIZE)
                 .addContainerGap())
         );
 
@@ -144,15 +213,25 @@ public class VistaClienteWS extends javax.swing.JFrame implements Runnable {
     }// </editor-fold>//GEN-END:initComponents
 
     private void botonEnviarMensajeActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_botonEnviarMensajeActionPerformed
-        mensajeEnviado = true;
+        String mensaje = campoTextoMensaje.getText();
+        String destinatario = campoTextoDstn.getText();
+        if (!mensaje.trim().isEmpty()) {
+            enviarMensaje(mensaje, destinatario);
+            campoTextoMensaje.setText("");
+        }
     }//GEN-LAST:event_botonEnviarMensajeActionPerformed
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JTextArea areaTextoMensajes;
+    private javax.swing.JTextArea areaUsuariosConectados;
     private javax.swing.JButton botonEnviarMensaje;
+    private javax.swing.JTextField campoTextoDstn;
     private javax.swing.JTextField campoTextoMensaje;
     private javax.swing.JLabel jLabel1;
+    private javax.swing.JLabel jLabel2;
+    private javax.swing.JLabel jLabel3;
     private javax.swing.JScrollPane jScrollPane1;
+    private javax.swing.JScrollPane jScrollPane2;
     // End of variables declaration//GEN-END:variables
     private URI serverURI;
     private Session session;
