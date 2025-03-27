@@ -15,7 +15,6 @@ import java.util.Set;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.swing.JOptionPane;
-import org.itson.clientewebsockets.WSEndpoint;
 
 @ClientEndpoint
 public class VistaClienteWS extends javax.swing.JFrame implements Runnable {
